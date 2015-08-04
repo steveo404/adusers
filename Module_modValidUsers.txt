@@ -1,0 +1,60 @@
+Option Compare Database
+
+Sub ValidateUserAccount()
+
+    Dim strPath As String
+    Dim strFile As String
+    Dim validResultFile As String
+    Dim invalidResultFile As String
+    Dim header As String
+    Dim entry As String
+
+    'Variables for the regular expression
+    Dim strPattern As String: strPattern = "[^a-zA-Z]"
+    Dim regEx As New RegExp 'Requires activating th MS VBScript Regular Expressions reference
+    Dim strInput As String
+    
+    With regEx
+        .Global = True
+        .Multiline = True
+        .IgnoreCase = False
+        .Pattern = strPattern
+    End With
+
+    strFile = GetFileName() 'Function lets you select the user file to import
+    
+    'Remove the resultFile from a previous run of this script
+    validResultFile = "C:\Scripts\ValidUserResults.txt"
+    Open validResultFile For Append As #9
+    Close #9
+    Kill validResultFile
+    
+    invalidResultFile = "C:\Scripts\NonUserResults.txt"
+    Open invalidResultFile For Append As #9
+    Close #9
+    Kill invalidResultFile
+    
+        
+    Open strFile For Input As #1    'Open the text file
+    Do Until EOF(1)         'Do loop to run through each line of the text file
+        Input #1, entry
+        If Len(entry) > 0 Then
+            If regEx.Test(entry) Then
+                'Open the invalidResultFile and poplate the invalid user
+                Open invalidResultFile For Append As #3
+                Print #3, entry
+                Close #3
+            Else
+                'Open the validResultFile and poplate the valid user
+                Open validResultFile For Append As #9
+                Print #9, entry
+                Close #9
+            End If
+        End If
+    Loop
+   
+    Application.RefreshDatabaseWindow
+    
+    MsgBox "Script Complete!!!"     'Message box pops up to let you know script complete
+
+End Sub

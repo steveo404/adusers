@@ -1,0 +1,111 @@
+Option Compare Database
+
+
+Sub UserImport()
+    'Script used to import files from net user command
+    'Command to generate the text file is <net user /domain > c:\users.txt>
+    'The user file has a list of AD accounts in a 3 column format
+    'This script breaks the list out so it can be imported into a table for Access
+    'It also creates a text file for a batch script
+
+    Dim strFile As String
+    Dim entry As String
+    Dim check As String
+    Dim trigger As Integer
+    Dim strLength As Integer
+    Dim i, j As Integer
+    Dim userID As String
+    Dim resultFile As String
+    Dim scriptFile As String
+
+    strFile = GetFileName() 'Function lets you select the user file to import
+
+    'Remove the resultFile generated from a previous run of this script
+    resultFile = "C:\UserResults.txt"
+    Open resultFile For Append As #9
+    Close #9
+    Kill resultFile
+    
+    'Remove the UsersForScript file generated from a previous run of this script
+    scriptFile = "C:\Scripts\UsersForScript.txt"
+    Open scriptFile For Append As #99
+    Close #99
+    Kill scriptFile
+    
+    
+    trigger = 0
+    
+    Open strFile For Input As #1    'Open the text file
+    Do Until EOF(1)
+        Input #1, entry
+        check = Mid(entry, 1, 5)
+
+        If trigger > 0 Then        'Once the trigger is set (at the bottom of script) you can now pull in the data
+            If entry = "The command completed successfully." Then Exit Do       'This text tells you it is the end of the file and can exit the script
+            strLength = Len(Trim(entry))
+            If strLength > 51 Then      'If the length of the row is greater than 51 - that means there are 3 columns of data
+                j = 1
+                For i = 1 To 3
+                    userID = Trim(Mid(entry, j, 25))
+                    Open resultFile For Append As #9    'Places user ID in resultFile
+                    Write #9, userID
+                    Close #9
+                    Open scriptFile For Append As #99   'Places user ID in scriptFile for other batch script
+                    Print #99, userID
+                    Close #99
+                    j = j + 25
+                Next
+            End If
+            If (strLength > 31) And (strLength < 51) Then  'If the length of the row is between 31 and 51 - that means there are 2 columns of data
+                j = 1
+                For i = 1 To 2
+                    userID = Trim(Mid(entry, j, 25))
+                    Open resultFile For Append As #9
+                    Write #9, userID
+                    Close #9
+                    Open scriptFile For Append As #99
+                    Print #99, userID
+                    Close #99
+                    j = j + 25
+                Next
+            End If
+            If strLength < 26 Then  'If the length of the row is less than 26 - that means there is only 1 column of data
+                    userID = Trim(Mid(entry, j, 25))
+                    Open resultFile For Append As #9
+                    Write #9, userID
+                    Close #9
+                    Open scriptFile For Append As #99
+                    Print #99, userID
+                    Close #99
+            End If
+        End If
+        
+       
+        If check = "-----" Then        'Review text in the file to find the Name field which represents name of the device
+            trigger = 1                'This trigger allows skipping the header information in the file
+        End If
+    Loop
+        
+    
+    Dim strTableName As String
+    Dim fileDate As String
+    
+    fileDate = TodayDate()
+    
+    'Remove previous version of this file if it was run earlier in the dat
+    'It now has a date stamp included with the file name
+    
+    strTableName = "UserIDResults" + fileDate
+    If TableExists(strTableName) Then
+        DoCmd.DeleteObject acTable, strTableName
+    End If
+    
+    'Import the text file into a database table
+    DoCmd.TransferText acImportDelim, "UserIDIS", strTableName, resultFile, False
+    
+    Application.RefreshDatabaseWindow
+    
+    MsgBox "Script Complete!!!"
+    
+
+End Sub
